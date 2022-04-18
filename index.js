@@ -18,6 +18,7 @@ mongoose
 // middleware
 app.use(cors());
 app.use(morgan("dev"));
+app.use(express.json());
 
 // route
 readdirSync("./routes").map((r) => app.use("/api", require(`./routes/${r}`)));
