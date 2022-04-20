@@ -8,7 +8,6 @@ export const createConnectAccount = async (req, res) => {
 
     if (!user.stripe_account_id) {
         const account = await stripe.accounts.create({type: "express"});
-        console.log(account);
         user.stripe_account_id = account.id;
         user.save();
     }
@@ -19,11 +18,23 @@ export const createConnectAccount = async (req, res) => {
         return_url: process.env.STRIPE_REDIRECT_URL,
         type: "account_onboarding",
     });
+
     // prefill any info
     accountLink = Object.assign(accountLink, {
-        "stripe_user[email]": user.email ||undefined,
+        email: user.email || undefined,
     });
 
     const link = `${accountLink.url}?${queryString.stringify(accountLink)}`;
     res.send(link);
+}
+
+export const getAccountStatus = async (req, res) => {
+    const user = await User.findById(req.user._id).exec();
+    const account = await stripe.accounts.retrieve(user.stripe_account_id);
+    const updatedUser = await User.findByIdAndUpdate(
+        user._id, 
+        {stripe_seller: account}, 
+        {new: true}
+    ).select("-password").exec();
+    res.json(updatedUser);
 }
