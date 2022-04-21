@@ -28,13 +28,62 @@ export const createConnectAccount = async (req, res) => {
     res.send(link);
 }
 
+const updateDelayDays = async (accountId) => {
+    try {
+        const account = await stripe.accounts.update(accountId, {
+            settings: {
+                payouts: {
+                    schedule: {
+                        delay_days: 7,
+                    },
+                },
+            },
+        });
+        return account;
+    } catch (error) {
+        console.log(error);
+    }
+    
+}
+
 export const getAccountStatus = async (req, res) => {
-    const user = await User.findById(req.user._id).exec();
-    const account = await stripe.accounts.retrieve(user.stripe_account_id);
-    const updatedUser = await User.findByIdAndUpdate(
-        user._id, 
-        {stripe_seller: account}, 
-        {new: true}
-    ).select("-password").exec();
-    res.json(updatedUser);
+    try {
+        const user = await User.findById(req.user._id).exec();
+        const account = await stripe.accounts.retrieve(user.stripe_account_id);
+        const updatedAccount = await updateDelayDays(account.id);
+        const updatedUser = await User.findByIdAndUpdate(
+            user._id, 
+            {stripe_seller: updatedAccount}, 
+            {new: true}
+        ).select("-password").exec();
+        res.json(updatedUser);
+    } catch (error) {
+        console.log(error);
+    }
+    
+}
+
+export const getAccountBalance = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).exec();
+        const account = await stripe.balance.retrieve({stripeAccount: user.stripe_account_id});
+        res.json(account.pending);
+    } catch (error) {
+        console.log(error);
+    }
+    
+}
+
+export const getPayoutSetting = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).exec();
+        const loginLink = await stripe.accounts.createLoginLink(
+            user.stripe_account_id, 
+            {redirect_url: process.env.STRIPE_SETTING_REDIRECT_URL}
+        );
+        res.json(loginLink);
+    } catch (error) {
+        console.log(error);
+    }
+    
 }
