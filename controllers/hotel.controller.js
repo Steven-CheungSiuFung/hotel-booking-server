@@ -1,7 +1,6 @@
 import fs from "fs";
 
 import Hotel from "../models/hotel";
-import User from "../models/user";
 
 export const createHotel = (req, res) => {
 
@@ -10,6 +9,8 @@ export const createHotel = (req, res) => {
         let files = req.files;
 
         let hotel = new Hotel(fields);
+
+        hotel.postedBy = req.user._id;
 
         if(files.image) {
             hotel.image.data = fs.readFileSync(files.image.path);
@@ -39,4 +40,37 @@ export const browseHotel = async (req, res) => {
         .populate("postedBy", "_id name")
         .exec();
     res.json(hotelInfo);
+}
+
+export const getImage = async (req, res) => {
+    let hotel = await Hotel.findById(req.params.hotelId).exec();
+    if (hotel && hotel.image && hotel.image.data != null) {
+        res.set("Content-Type", hotel.image.contentType);
+        return res.send(hotel.image.data);
+    }
+}
+
+export const getSellerHotels = async (req, res) => {
+    let hotels = await Hotel.find({postedBy: req.user._id})
+        .select("-image.data")
+        .populate("postedBy", "_id name")
+        .exec();
+    res.json(hotels);
+}
+
+export const editHotel = async (req, res) => {
+    try {
+        let fields = req.fields;
+        let hotel = await Hotel.findOneAndUpdate({_id: fields._id}, {...fields})
+            .select("-image.data")
+            .populate("postedBy", "_id name")
+            .exec();
+        res.json(hotel);
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            error: error.message,
+        })
+    }
+
 }

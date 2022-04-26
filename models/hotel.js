@@ -14,7 +14,7 @@ const hotelSchema = new Schema({
         maxlength: 10000,
     },
     location: {
-        type: Object,
+        type: String,
     },
     price: {
         type: Number,
