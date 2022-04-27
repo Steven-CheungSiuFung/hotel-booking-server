@@ -72,5 +72,18 @@ export const editHotel = async (req, res) => {
             error: error.message,
         })
     }
+}
 
+export const deleteHotel = async (req, res) => {
+    try {
+        const removed = await Hotel.findByIdAndDelete(req.params.hotelId)
+            .select("-image.data")
+            .exec();
+        res.json(removed);
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            error: error.message,
+        })
+    }
 }
