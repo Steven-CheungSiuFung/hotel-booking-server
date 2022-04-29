@@ -61,11 +61,19 @@ export const getSellerHotels = async (req, res) => {
 export const editHotel = async (req, res) => {
     try {
         let fields = req.fields;
-        let hotel = await Hotel.findOneAndUpdate({_id: fields._id}, {...fields})
-            .select("-image.data")
-            .populate("postedBy", "_id name")
-            .exec();
-        res.json(hotel);
+        let files = req.files;
+        let data = {...fields};
+        let image = {};
+
+        if(files.image) {
+            image.data = fs.readFileSync(files.image.path);
+            image.contentType = files.image.type;
+            data.image = image;
+        };
+
+        let updatedHotel = await Hotel.findOneAndUpdate({_id: fields._id}, data, {new: true})
+            .select("-image.data");
+        res.json(updatedHotel);
     } catch (error) {
         console.log(error);
         res.status(400).json({
@@ -80,6 +88,21 @@ export const deleteHotel = async (req, res) => {
             .select("-image.data")
             .exec();
         res.json(removed);
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            error: error.message,
+        })
+    }
+}
+
+export const getHotelDetail = async (req, res) => {
+    try {
+        const hotel = await Hotel.findById(req.params.hotelId)
+            .select("-image.data")
+            .populate("postedBy", "_id name")
+            .exec();
+        res.json(hotel);
     } catch (error) {
         console.log(error);
         res.status(400).json({
