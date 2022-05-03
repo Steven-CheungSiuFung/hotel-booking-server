@@ -1,6 +1,7 @@
 import User from "../models/user";
 import  queryString from "query-string";
 import Hotel from "../models/hotel";
+import Order from "../models/order";
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
@@ -119,7 +120,7 @@ export const getSessionId = async (req, res) => {
               },
             },
             mode: 'payment',
-            success_url: process.env.STRIPE_SUCCESS_URL,
+            success_url: `${process.env.STRIPE_SUCCESS_URL}/${hotel._id}`,
             cancel_url: process.env.STRIPE_CANCEL_URL,
           });
 
@@ -130,8 +131,40 @@ export const getSessionId = async (req, res) => {
         res.send({
             sessionURL: session.url
         });
-        
+
     } catch (error) {
         console.log(error);
+    }
+}
+
+export const stripeCheckoutSuccess = async (req, res) => {
+    try {
+        // 1. get data
+        const { hotelId } = req.body;
+        const user = await User.findById(req.user._id).exec();
+        const session = await stripe.checkout.sessions.retrieve(user.stripeSession.id);
+        // 2. create order
+        if (session.payment_status === "paid") {
+            // check if order already exist
+            const orderExist = await Order.findOne({"session.id": session.id}).exec();
+            if (orderExist) {
+                res.json({success: true});
+            } else {
+                // create order if not exist
+                let newOrder = await new Order({
+                    hotel: hotelId,
+                    session: session,
+                    orderedBy: user._id,
+                }).save();
+                // remove user's stripeSession
+                await User.findByIdAndUpdate(user._id, {
+                    $set: { stripeSession: {} }
+                });
+                // send sucess response
+                res.json({success: true});
+            }
+        }
+    } catch (error) {
+        console.log("STRIPE CHECKOUT SUCCESS ERROR ===> ", error);
     }
 }
