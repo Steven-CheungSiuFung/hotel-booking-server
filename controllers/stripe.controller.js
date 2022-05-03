@@ -1,5 +1,6 @@
 import User from "../models/user";
 import  queryString from "query-string";
+import Hotel from "../models/hotel";
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
@@ -85,5 +86,52 @@ export const getPayoutSetting = async (req, res) => {
     } catch (error) {
         console.log(error);
     }
-    
+}
+
+export const getSessionId = async (req, res) => {
+
+
+    try {
+        // 1. get hotel details
+        const {hotelId} = req.body;
+        const hotel = await Hotel.findById(hotelId).populate("postedBy").exec();
+
+        // 2. 15% charge as app fee
+        const fee = hotel.price * 0.15
+        
+        // 3. create Session
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+
+        // 4. item details    
+            line_items: [{
+              name: 'hotel booking',
+              amount: hotel.price * 100, // in cents
+              currency: 'usd',
+              quantity: 1,
+            }],
+        
+        // 5. create payment intent with app fee
+            payment_intent_data: {
+              application_fee_amount: fee * 100, // in cents
+              transfer_data: {
+                destination: hotel.postedBy.stripe_account_id,
+              },
+            },
+            mode: 'payment',
+            success_url: process.env.STRIPE_SUCCESS_URL,
+            cancel_url: process.env.STRIPE_CANCEL_URL,
+          });
+
+        // 6. add session object to user in db
+        const user = await User.findByIdAndUpdate(req.user._id, {stripeSession: session}).exec();
+
+        // 7. send the link to frontend
+        res.send({
+            sessionURL: session.url
+        });
+        
+    } catch (error) {
+        console.log(error);
+    }
 }
