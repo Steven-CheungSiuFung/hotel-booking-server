@@ -1,6 +1,7 @@
 import fs from "fs";
 
 import Hotel from "../models/hotel";
+import Order from "../models/order";
 
 export const createHotel = (req, res) => {
 
@@ -103,6 +104,23 @@ export const getHotelDetail = async (req, res) => {
             .populate("postedBy", "_id name")
             .exec();
         res.json(hotel);
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            error: error.message,
+        })
+    }
+}
+
+export const getUserHotelBooking = async (req, res) => {
+    try {
+        const orderData = await Order
+            .find({orderedBy: req.user._id})
+            .select("session")
+            .populate("hotel", "-image.data")
+            .populate("orderedBy", "_id name")
+            .exec();
+        res.json(orderData);
     } catch (error) {
         console.log(error);
         res.status(400).json({
