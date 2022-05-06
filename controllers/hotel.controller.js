@@ -128,3 +128,44 @@ export const getUserHotelBooking = async (req, res) => {
         })
     }
 }
+
+export const searchHotels = async (req, res) => {
+    try {
+        const {formData} = req.body;
+        const {location, bed, from, to} = formData;
+
+        const searchData = {
+            location: location,
+            bed: bed,
+        };
+        let searchFrom = from;
+        let searchTo = to;
+
+        if (location == "") {
+            delete searchData.location;
+        }
+        if (bed == "") {
+            delete searchData.bed;
+        }
+        if (from == "") {
+            searchFrom = new Date();
+        }
+        if (to == "") {
+            searchTo = new Date();
+        }
+        // if from, {bd.from > s.from}, else {db.from > new Date()}
+        // if to, {db.to > s.to} else {db.to > new Date()}
+        console.log(formData);
+        const hotels = await Hotel.find({...searchData, from: {$lte: searchFrom}, to: {$gte: searchTo}})
+            .limit(12)
+            .select("-image.data")
+            .populate("postedBy", "_id name")
+            .exec();
+        res.json(hotels);
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            error: error.message,
+        })
+    }
+}
