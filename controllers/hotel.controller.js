@@ -153,8 +153,7 @@ export const searchHotels = async (req, res) => {
         if (to == "") {
             searchTo = new Date();
         }
-        // if from, {bd.from > s.from}, else {db.from > new Date()}
-        // if to, {db.to > s.to} else {db.to > new Date()}
+
         console.log(formData);
         const hotels = await Hotel.find({...searchData, from: {$lte: searchFrom}, to: {$gte: searchTo}})
             .limit(12)

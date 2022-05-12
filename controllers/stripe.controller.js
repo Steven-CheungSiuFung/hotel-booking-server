@@ -2,6 +2,7 @@ import User from "../models/user";
 import  queryString from "query-string";
 import Hotel from "../models/hotel";
 import Order from "../models/order";
+import moment from "moment";
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
@@ -94,7 +95,9 @@ export const getSessionId = async (req, res) => {
 
     try {
         // 1. get hotel details
-        const {hotelId} = req.body;
+        const {formData} = req.body;
+        const {hotelId, from, to} = formData;
+        const days =  moment(to).diff(moment(from), "days");
         const hotel = await Hotel.findById(hotelId).populate("postedBy").exec();
 
         // 2. 15% charge as app fee
@@ -107,7 +110,7 @@ export const getSessionId = async (req, res) => {
         // 4. item details    
             line_items: [{
               name: 'hotel booking',
-              amount: hotel.price * 100, // in cents
+              amount: hotel.price * days * 100, // in cents
               currency: 'usd',
               quantity: 1,
             }],
